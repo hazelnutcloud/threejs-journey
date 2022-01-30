@@ -15,20 +15,20 @@ const matcapTextureGreen = textureLoader.load('textures/matcaps/7.png')
 
 // Materials
 const normalMaterial = new THREE.MeshNormalMaterial()
-const matcapMaterialMetal = new THREE.MeshMatcapMaterial({ matcap: matcapTextureMetal })
-const matcapMaterialRust = new THREE.MeshMatcapMaterial({ matcap: matcapTextureRust })
-const matcapMaterialGreen = new THREE.MeshMatcapMaterial({ matcap: matcapTextureGreen })
+const matcapMaterialMetal = new THREE.MeshMatcapMaterial({ matcap: matcapTextureMetal, flatShading: true })
+const matcapMaterialRust = new THREE.MeshMatcapMaterial({ matcap: matcapTextureRust, flatShading: true })
+const matcapMaterialGreen = new THREE.MeshMatcapMaterial({ matcap: matcapTextureGreen, flatShading: true })
 
 // Variables
 let font, textMesh, sphereGroup
 let camera, screenResolution, scene, canvas, renderPixelatedPass, controls, composer, renderer
 const params = {
     text: 'nutcloud',
-    shapesMaterial: normalMaterial,
-    textMaterial: normalMaterial,
+    shapesMaterial: matcapMaterialMetal,
+    textMaterial: matcapMaterialGreen,
     pixelSize: 4,
-    normalEdgeStrength: .1,
-    depthEdgeStrength: 0,
+    normalEdgeStrength: 0.3,
+    depthEdgeStrength: 0.4,
     rotate: true,
     sphereSize: 5,
     shapesCount: 100,
@@ -55,10 +55,10 @@ function init() {
     scene = new THREE.Scene()
 
     // Text
-    loadFont('/fonts/helvetiker_regular.typeface.json', normalMaterial)
+    loadFont('/fonts/helvetiker_regular.typeface.json', params.textMaterial)
 
     // Shapes sphere
-    createSphereGroup(normalMaterial)
+    createSphereGroup(params.shapesMaterial)
 
     // Resize event listener
     window.addEventListener('resize', resize)
@@ -135,7 +135,7 @@ function createText(material) {
             size: 0.5,
             height: 0.2,
             curveSegments: 12,
-            bevelEnabled: true,
+            bevelEnabled: false,
             bevelThickness: 0.03,
             bevelSize: 0.02,
             bevelOffset: 0,
@@ -251,8 +251,8 @@ function createRenderer() {
     composer = new EffectComposer(renderer)
     renderPixelatedPass = new RenderPixelatedPass(screenResolution, 5, scene, camera)
     composer.addPass(renderPixelatedPass)
-    renderPixelatedPass.normalEdgeStrength = 0.1
-    renderPixelatedPass.depthEdgeStrength = 0
+    renderPixelatedPass.normalEdgeStrength = params.normalEdgeStrength
+    renderPixelatedPass.depthEdgeStrength = params.depthEdgeStrength
     renderPixelatedPass.setPixelSize(params.pixelSize)
 
     gui.add( params, 'pixelSize' ).min( 1 ).max( 16 ).step( 1 )
