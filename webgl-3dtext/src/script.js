@@ -29,7 +29,9 @@ const params = {
     pixelSize: 4,
     normalEdgeStrength: .1,
     depthEdgeStrength: 0,
-    rotate: true
+    rotate: true,
+    sphereSize: 5,
+    shapesCount: 100,
 }
 
 // Debug GUI
@@ -96,6 +98,16 @@ function init() {
     }).name('text material')
 
     gui.add(params, 'rotate')
+
+    gui.add(params, 'sphereSize').onChange(() => {
+        scene.remove(sphereGroup)
+        createSphereGroup(params.shapesMaterial)
+    }).min(0).max(10).step(1).name('shape sphere size')
+
+    gui.add(params, 'shapesCount').onChange(() => {
+        scene.remove(sphereGroup)
+        createSphereGroup(params.shapesMaterial)
+    }).min(0).max(1000).step(1).name('shapes count')
 }
 
 
@@ -138,29 +150,31 @@ function createText(material) {
 
 function createSphereGroup(material) {
     sphereGroup = new THREE.Group()
-    for (let i = 0; i < 400; i++) {
+    const sphereSize = params.sphereSize
+    const shapeCount = params.shapesCount
+    for (let i = 0; i < shapeCount; i++) {
         const theta = 2 * Math.PI * Math.random()
         const phi = Math.acos(1 - 2 * Math.random() * 1)
         const scale = Math.max(Math.random(), 0.2)
         if (i % 3 === 0) {
-            createDonut(theta, phi, scale, material)
+            createDonut(theta, phi, scale, material, sphereSize)
         } else if (i % 3 === 1) {
-            createCube(theta, phi, scale, material)
+            createCube(theta, phi, scale, material, sphereSize)
         } else (
-            createPyramid(theta, phi, scale, material)
+            createPyramid(theta, phi, scale, material, sphereSize)
         )
     }
     scene.add(sphereGroup)
 }
 
-function createDonut(theta, phi, scale, material) {
+function createDonut(theta, phi, scale, material, sphereSize) {
     // Donuts
     const donutGeometry = new THREE.TorusGeometry(0.3, 0.2, 32, 64)
     const donut = new THREE.Mesh(donutGeometry, material)
 
-    donut.position.x = Math.cos(theta) * Math.sin(phi) * 10
-    donut.position.y = Math.sin(theta) * Math.sin(phi) * 10
-    donut.position.z = Math.cos(phi) * 10
+    donut.position.x = Math.cos(theta) * Math.sin(phi) * sphereSize
+    donut.position.y = Math.sin(theta) * Math.sin(phi) * sphereSize
+    donut.position.z = Math.cos(phi) * sphereSize
     donut.rotation.x = Math.random() * Math.PI
     donut.rotation.y = Math.random() * Math.PI
     donut.scale.set(scale, scale, scale)
@@ -168,13 +182,13 @@ function createDonut(theta, phi, scale, material) {
     sphereGroup.add(donut)
 }
 
-function createCube(theta, phi, scale, material) {
+function createCube(theta, phi, scale, material, sphereSize) {
     const cubeGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5)
     const cube = new THREE.Mesh(cubeGeometry, material)
 
-    cube.position.x = Math.cos(theta) * Math.sin(phi) * 10
-    cube.position.y = Math.sin(theta) * Math.sin(phi) * 10
-    cube.position.z = Math.cos(phi) * 10
+    cube.position.x = Math.cos(theta) * Math.sin(phi) * sphereSize
+    cube.position.y = Math.sin(theta) * Math.sin(phi) * sphereSize
+    cube.position.z = Math.cos(phi) * sphereSize
     cube.rotation.x = Math.random() * Math.PI
     cube.rotation.y = Math.random() * Math.PI
     cube.scale.set(scale, scale, scale)
@@ -182,13 +196,13 @@ function createCube(theta, phi, scale, material) {
     sphereGroup.add(cube)
 }
 
-function createPyramid(theta, phi, scale, material) {
+function createPyramid(theta, phi, scale, material, sphereSize) {
     const pyramidGeometry = new THREE.TetrahedronGeometry(0.5)
     const pyramid = new THREE.Mesh(pyramidGeometry, material)
 
-    pyramid.position.x = Math.cos(theta) * Math.sin(phi) * 10
-    pyramid.position.y = Math.sin(theta) * Math.sin(phi) * 10
-    pyramid.position.z = Math.cos(phi) * 10
+    pyramid.position.x = Math.cos(theta) * Math.sin(phi) * sphereSize
+    pyramid.position.y = Math.sin(theta) * Math.sin(phi) * sphereSize
+    pyramid.position.z = Math.cos(phi) * sphereSize
     pyramid.rotation.x = Math.random() * Math.PI
     pyramid.rotation.y = Math.random() * Math.PI
     pyramid.scale.set(scale, scale, scale)
@@ -212,7 +226,7 @@ function resize() {
 
 function createCamera() {
     const aspectRatio = screenResolution.x / screenResolution.y
-    camera = new THREE.OrthographicCamera(-aspectRatio * 2, aspectRatio * 2, 2, -2)
+    camera = new THREE.OrthographicCamera(-aspectRatio * 2, aspectRatio * 2, 2, -2, 0.0000000001)
     camera.position.x = 3
     camera.position.y = new THREE.Vector3(3, 0, 5).distanceTo(new THREE.Vector3(0, 0, 0)) * Math.tan(Math.PI / 6)
     camera.position.z = 5
