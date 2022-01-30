@@ -24,14 +24,15 @@ let font, textMesh, sphereGroup
 let camera, screenResolution, scene, canvas, renderPixelatedPass, controls, composer, renderer
 const params = {
     text: 'nutcloud',
-    shapesMaterial: matcapMaterialMetal,
+    shapesMaterial: matcapMaterialMetal ,
     textMaterial: matcapMaterialGreen,
     pixelSize: 4,
-    normalEdgeStrength: 0.3,
-    depthEdgeStrength: 0.4,
+    normalEdgeStrength: 0,
+    depthEdgeStrength: 0,
     rotate: true,
     sphereSize: 5,
     shapesCount: 100,
+    hide: () => { gui.destroy() }
 }
 
 // Debug GUI
@@ -108,6 +109,8 @@ function init() {
         scene.remove(sphereGroup)
         createSphereGroup(params.shapesMaterial)
     }).min(0).max(1000).step(1).name('shapes count')
+
+    gui.add(params, 'hide')
 }
 
 
@@ -135,7 +138,7 @@ function createText(material) {
             size: 0.5,
             height: 0.2,
             curveSegments: 12,
-            bevelEnabled: false,
+            bevelEnabled: true,
             bevelThickness: 0.03,
             bevelSize: 0.02,
             bevelOffset: 0,
