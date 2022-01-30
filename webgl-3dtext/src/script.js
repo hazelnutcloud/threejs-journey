@@ -7,161 +7,260 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPixelatedPass } from './RenderPixelatedPass.js'
 import * as dat from 'lil-gui'
 
-/**
- * Base
- */
-// Debug
-// const gui = new dat.GUI()
-
-// Canvas
-const canvas = document.querySelector('canvas.webgl')
-
-// Scene
-const scene = new THREE.Scene()
-
-/**
- * Textures
- */
+// Textures
 const textureLoader = new THREE.TextureLoader()
-const matcapTexture = textureLoader.load('textures/matcaps/8.png')
+const matcapTextureMetal = textureLoader.load('textures/matcaps/3.png')
+const matcapTextureRust = textureLoader.load('textures/matcaps/8.png')
+const matcapTextureGreen = textureLoader.load('textures/matcaps/7.png')
 
-/**
- * Fonts
- */
-const fontLoader = new FontLoader()
+// Materials
+const normalMaterial = new THREE.MeshNormalMaterial()
+const matcapMaterialMetal = new THREE.MeshMatcapMaterial({ matcap: matcapTextureMetal })
+const matcapMaterialRust = new THREE.MeshMatcapMaterial({ matcap: matcapTextureRust })
+const matcapMaterialGreen = new THREE.MeshMatcapMaterial({ matcap: matcapTextureGreen })
 
-fontLoader.load(
-    '/fonts/helvetiker_regular.typeface.json',
-    (font) =>
-    {
-        // Material
-        const material = new THREE.MeshMatcapMaterial({ matcap: matcapTexture })
-        // const material = new THREE.MeshNormalMaterial()
+// Variables
+let font, textMesh, sphereGroup
+let camera, screenResolution, scene, canvas, renderPixelatedPass, controls, composer, renderer
+const params = {
+    text: 'nutcloud',
+    shapesMaterial: normalMaterial,
+    textMaterial: normalMaterial,
+    pixelSize: 4,
+    normalEdgeStrength: .1,
+    depthEdgeStrength: 0,
+    rotate: true
+}
 
-        // Text
-        const textGeometry = new TextGeometry(
-            'nutcloud',
-            {
-                font: font,
-                size: 0.5,
-                height: 0.2,
-                curveSegments: 12,
-                bevelEnabled: true,
-                bevelThickness: 0.03,
-                bevelSize: 0.02,
-                bevelOffset: 0,
-                bevelSegments: 5
-            }
-        )
-        textGeometry.center()
+// Debug GUI
+const gui = new dat.GUI()
+gui.close()
 
-        const text = new THREE.Mesh(textGeometry, material)
-        scene.add(text)
+const clock = new THREE.Clock()
 
-        // Donuts
-        const donutGeometry = new THREE.TorusGeometry(0.3, 0.2, 32, 64)
+// Start
+init()
+animate()
 
-        for(let i = 0; i < 50; i++)
-        {
-            const donut = new THREE.Mesh(donutGeometry, material)
-            const theta = 2 * Math.PI * Math.random()
-            const phi = Math.acos(1 - 2 * Math.random() * 1)
-            donut.position.x = Math.cos(theta) * Math.sin(phi) * 5
-            donut.position.y = Math.sin(theta) * Math.sin(phi) * 5
-            donut.position.z = Math.cos(phi) * 5
-            donut.rotation.x = Math.random() * Math.PI
-            donut.rotation.y = Math.random() * Math.PI
-            const scale = Math.max(Math.random(), 0.2)
-            donut.scale.set(scale, scale, scale)
+function init() {
+    // Screen resolution
+    screenResolution = new THREE.Vector2( window.innerWidth, window.innerHeight ) 
 
-            scene.add(donut)
+    // Canvas
+    canvas = document.querySelector('canvas.webgl')
+
+    // Scene
+    scene = new THREE.Scene()
+
+    // Text
+    loadFont('/fonts/helvetiker_regular.typeface.json', normalMaterial)
+
+    // Shapes sphere
+    createSphereGroup(normalMaterial)
+
+    // Resize event listener
+    window.addEventListener('resize', resize)
+
+    // Camera
+    createCamera()
+
+    // Controls
+    createControls()
+
+    // Renderer
+    createRenderer()
+
+    // Debug GUI
+
+    gui.add(params, "text").onChange(v => {
+        refreshText(params.textMaterial)
+    })
+
+    gui.add(params, 'shapesMaterial', {
+        'rainbow': normalMaterial,
+        'metal': matcapMaterialMetal,
+        'rust': matcapMaterialRust,
+        'green': matcapMaterialGreen,
+    }).onChange(() => {
+        scene.remove(sphereGroup)
+        createSphereGroup(params.shapesMaterial)
+    }).name('shapes material')
+
+    gui.add(params, 'textMaterial', {
+        'rainbow': normalMaterial,
+        'metal': matcapMaterialMetal,
+        'rust': matcapMaterialRust,
+        'green': matcapMaterialGreen,
+    }).onChange(() => {
+        textMesh.material = params.textMaterial
+    }).name('text material')
+
+    gui.add(params, 'rotate')
+}
+
+
+function loadFont(fontPath, material) {
+    const fontLoader = new FontLoader()
+    fontLoader.load(
+        fontPath,
+        function (response) {
+            font = response
+            refreshText(material)
         }
+    )
+}
+
+function refreshText(material) {
+    if (textMesh) scene.remove(textMesh)
+    createText(material)
+}
+
+function createText(material) {
+    const textGeo = new TextGeometry(
+        params.text,
+        {
+            font: font,
+            size: 0.5,
+            height: 0.2,
+            curveSegments: 12,
+            bevelEnabled: true,
+            bevelThickness: 0.03,
+            bevelSize: 0.02,
+            bevelOffset: 0,
+            bevelSegments: 5
+        }
+    )
+    textGeo.center()
+
+    textMesh = new THREE.Mesh(textGeo, material)
+    scene.add(textMesh)
+}
+
+function createSphereGroup(material) {
+    sphereGroup = new THREE.Group()
+    for (let i = 0; i < 400; i++) {
+        const theta = 2 * Math.PI * Math.random()
+        const phi = Math.acos(1 - 2 * Math.random() * 1)
+        const scale = Math.max(Math.random(), 0.2)
+        if (i % 3 === 0) {
+            createDonut(theta, phi, scale, material)
+        } else if (i % 3 === 1) {
+            createCube(theta, phi, scale, material)
+        } else (
+            createPyramid(theta, phi, scale, material)
+        )
     }
-)
+    scene.add(sphereGroup)
+}
+
+function createDonut(theta, phi, scale, material) {
+    // Donuts
+    const donutGeometry = new THREE.TorusGeometry(0.3, 0.2, 32, 64)
+    const donut = new THREE.Mesh(donutGeometry, material)
+
+    donut.position.x = Math.cos(theta) * Math.sin(phi) * 10
+    donut.position.y = Math.sin(theta) * Math.sin(phi) * 10
+    donut.position.z = Math.cos(phi) * 10
+    donut.rotation.x = Math.random() * Math.PI
+    donut.rotation.y = Math.random() * Math.PI
+    donut.scale.set(scale, scale, scale)
+
+    sphereGroup.add(donut)
+}
+
+function createCube(theta, phi, scale, material) {
+    const cubeGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5)
+    const cube = new THREE.Mesh(cubeGeometry, material)
+
+    cube.position.x = Math.cos(theta) * Math.sin(phi) * 10
+    cube.position.y = Math.sin(theta) * Math.sin(phi) * 10
+    cube.position.z = Math.cos(phi) * 10
+    cube.rotation.x = Math.random() * Math.PI
+    cube.rotation.y = Math.random() * Math.PI
+    cube.scale.set(scale, scale, scale)
+
+    sphereGroup.add(cube)
+}
+
+function createPyramid(theta, phi, scale, material) {
+    const pyramidGeometry = new THREE.TetrahedronGeometry(0.5)
+    const pyramid = new THREE.Mesh(pyramidGeometry, material)
+
+    pyramid.position.x = Math.cos(theta) * Math.sin(phi) * 10
+    pyramid.position.y = Math.sin(theta) * Math.sin(phi) * 10
+    pyramid.position.z = Math.cos(phi) * 10
+    pyramid.rotation.x = Math.random() * Math.PI
+    pyramid.rotation.y = Math.random() * Math.PI
+    pyramid.scale.set(scale, scale, scale)
+
+    sphereGroup.add(pyramid)
+}
 
 /**
  * Sizes
  */
-const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight
-}
-const screenResolution = new THREE.Vector2( window.innerWidth, window.innerHeight )
 
-window.addEventListener('resize', () =>
-{
-    // Update sizes
-    sizes.width = window.innerWidth
-    sizes.height = window.innerHeight
-
-    // Update camera
-    camera.aspect = sizes.width / sizes.height
+function resize() {
+    screenResolution.set(window.innerWidth, window.innerHeight)
+    const aspectRatio = screenResolution.x / screenResolution.y
+    camera.left = -aspectRatio * 2
+    camera.right = aspectRatio * 2
     camera.updateProjectionMatrix()
+    renderer.setSize(screenResolution.x, screenResolution.y)
+    renderPixelatedPass.setSize(screenResolution.x, screenResolution.y)
+}
 
-    // Update renderer
-    renderer.setSize(sizes.width, sizes.height)
+function createCamera() {
+    const aspectRatio = screenResolution.x / screenResolution.y
+    camera = new THREE.OrthographicCamera(-aspectRatio * 2, aspectRatio * 2, 2, -2)
+    camera.position.x = 3
+    camera.position.y = new THREE.Vector3(3, 0, 5).distanceTo(new THREE.Vector3(0, 0, 0)) * Math.tan(Math.PI / 6)
+    camera.position.z = 5
+    scene.add(camera)
+}
+
+function createControls() {
+    controls = new OrbitControls(camera, canvas)
+    controls.enableDamping = true
+    controls.enablePan = false
+    controls.minPolarAngle = controls.maxPolarAngle = controls.getPolarAngle()
+}
+
+function createRenderer() {
+    renderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+        antialias: false
+    })
+    renderer.shadowMap.enabled = true;
+    renderer.setSize(screenResolution.x, screenResolution.y)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-})
+    composer = new EffectComposer(renderer)
+    renderPixelatedPass = new RenderPixelatedPass(screenResolution, 5, scene, camera)
+    composer.addPass(renderPixelatedPass)
+    renderPixelatedPass.normalEdgeStrength = 0.1
+    renderPixelatedPass.depthEdgeStrength = 0
+    renderPixelatedPass.setPixelSize(params.pixelSize)
 
-/**
- * Camera
- */
-// Base camera
-// const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-// camera.position.x = 0
-// camera.position.y = 0.5
-// camera.position.z = 5
-const aspectRatio = screenResolution.x / screenResolution.y
-const camera = new THREE.OrthographicCamera(-aspectRatio * 2, aspectRatio * 2, 2, -2)
-camera.position.x = 3
-camera.position.y = new THREE.Vector3(3, 0, 5).distanceTo(new THREE.Vector3(0, 0, 0)) * Math.tan(Math.PI / 6)
-camera.position.z = 5
-scene.add(camera)
- 
-// Controls
-const controls = new OrbitControls(camera, canvas)
-controls.enableDamping = true
-controls.enablePan = false
-controls.minPolarAngle = controls.maxPolarAngle = controls.getPolarAngle()
-controls.enableZoom = false
+    gui.add( params, 'pixelSize' ).min( 1 ).max( 16 ).step( 1 )
+    .onChange( () => {
+        renderPixelatedPass.setPixelSize( params.pixelSize )
+    } );
+    gui.add( renderPixelatedPass, 'normalEdgeStrength' ).min( 0 ).max( 2 ).step( .05 );
+    gui.add( renderPixelatedPass, 'depthEdgeStrength' ).min( 0 ).max( 1 ).step( .05 );
+}
 
-/**
- * Renderer
- */
-//normal
-const renderer = new THREE.WebGLRenderer({
-    canvas: canvas,
-    antialias: false
-})
-renderer.shadowMap.enabled = true;
-renderer.setSize(sizes.width, sizes.height)
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+function animate() {
+    const deltaTime = clock.getDelta()
+    if (sphereGroup && params.rotate) {
+        sphereGroup.rotation.y += deltaTime * 0.05
+    }
+    if (textMesh && params.rotate) {
+        textMesh.rotation.y += deltaTime * -0.2
+    }
 
-/**
- * Composer
- */
-const composer = new EffectComposer(renderer)
-const renderPixelatedPass = new RenderPixelatedPass(screenResolution, 5, scene, camera)
-composer.addPass(renderPixelatedPass)
-
-/**
- * Animate
- */
-const clock = new THREE.Clock()
-
-const tick = () =>
-{
-    const elapsedTime = clock.getElapsedTime()
-
-    // Update controls
     controls.update()
 
-    // Render
-    // renderer.render(scene, camera)
     composer.render()
 
-    // Call tick again on the next frame
-    window.requestAnimationFrame(tick)
+    window.requestAnimationFrame(animate)
 }
-
-tick()
