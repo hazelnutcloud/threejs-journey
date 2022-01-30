@@ -3,6 +3,8 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js'
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPixelatedPass } from './RenderPixelatedPass.js'
 import * as dat from 'lil-gui'
 
 /**
@@ -59,14 +61,14 @@ fontLoader.load(
         // Donuts
         const donutGeometry = new THREE.TorusGeometry(0.3, 0.2, 32, 64)
 
-        for(let i = 0; i < 1000; i++)
+        for(let i = 0; i < 50; i++)
         {
             const donut = new THREE.Mesh(donutGeometry, material)
             const theta = 2 * Math.PI * Math.random()
             const phi = Math.acos(1 - 2 * Math.random() * 1)
-            donut.position.x = Math.cos(theta) * Math.sin(phi) * 30
-            donut.position.y = Math.sin(theta) * Math.sin(phi) * 30
-            donut.position.z = Math.cos(phi) * 30
+            donut.position.x = Math.cos(theta) * Math.sin(phi) * 5
+            donut.position.y = Math.sin(theta) * Math.sin(phi) * 5
+            donut.position.z = Math.cos(phi) * 5
             donut.rotation.x = Math.random() * Math.PI
             donut.rotation.y = Math.random() * Math.PI
             const scale = Math.max(Math.random(), 0.2)
@@ -84,6 +86,7 @@ const sizes = {
     width: window.innerWidth,
     height: window.innerHeight
 }
+const screenResolution = new THREE.Vector2( window.innerWidth, window.innerHeight )
 
 window.addEventListener('resize', () =>
 {
@@ -104,9 +107,14 @@ window.addEventListener('resize', () =>
  * Camera
  */
 // Base camera
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.x = 0
-camera.position.y = 0.5
+// const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
+// camera.position.x = 0
+// camera.position.y = 0.5
+// camera.position.z = 5
+const aspectRatio = screenResolution.x / screenResolution.y
+const camera = new THREE.OrthographicCamera(-aspectRatio * 2, aspectRatio * 2, 2, -2)
+camera.position.x = 3
+camera.position.y = new THREE.Vector3(3, 0, 5).distanceTo(new THREE.Vector3(0, 0, 0)) * Math.tan(Math.PI / 6)
 camera.position.z = 5
 scene.add(camera)
  
@@ -114,15 +122,27 @@ scene.add(camera)
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
 controls.enablePan = false
+controls.minPolarAngle = controls.maxPolarAngle = controls.getPolarAngle()
+controls.enableZoom = false
 
 /**
  * Renderer
  */
+//normal
 const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
+    canvas: canvas,
+    antialias: false
 })
+renderer.shadowMap.enabled = true;
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+/**
+ * Composer
+ */
+const composer = new EffectComposer(renderer)
+const renderPixelatedPass = new RenderPixelatedPass(screenResolution, 5, scene, camera)
+composer.addPass(renderPixelatedPass)
 
 /**
  * Animate
@@ -137,7 +157,8 @@ const tick = () =>
     controls.update()
 
     // Render
-    renderer.render(scene, camera)
+    // renderer.render(scene, camera)
+    composer.render()
 
     // Call tick again on the next frame
     window.requestAnimationFrame(tick)
