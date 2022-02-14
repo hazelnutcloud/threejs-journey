@@ -149,7 +149,6 @@ scene.add(camera)
 // Controls
 const controls = new OrbitControls(camera, canvas)
 controls.enablePan = false
-controls.enableZoom = false
 controls.enableDamping = true
 
 /**
@@ -164,14 +163,6 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 /**
  * Animate
  */
-const mousePosition = {
-    x: 0,
-    y: 0,
-}
-canvas.addEventListener('mousemove', e => {
-    mousePosition.x = e.clientX / sizes.width - 0.5
-    mousePosition.y = e.clientY / sizes.width - 0.5
-})
 
 const clock = new THREE.Clock()
 
@@ -179,11 +170,6 @@ const tick = () =>
 {
     const elapsedTime = clock.getElapsedTime()
     points.rotation.y = elapsedTime * 0.02
-
-    camera.position.x = mousePosition.x
-    camera.position.y = mousePosition.y + 6
-    camera.lookAt(points.position)
-
 
     // Update controls
     controls.update()
