@@ -55,7 +55,7 @@ gui.addColor(parameters, "insideColor").onFinishChange(() => generateGalaxy())
 gui.addColor(parameters, "outsideColor").onFinishChange(() => generateGalaxy())
 
 let geometry = null
-let material = null
+let material = null 
 let points = null
 
 const generateGalaxy = () => {
