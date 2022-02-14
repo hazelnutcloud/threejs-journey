@@ -150,7 +150,6 @@ scene.add(camera)
 const controls = new OrbitControls(camera, canvas)
 controls.enablePan = false
 controls.enableZoom = false
-controls.enableRotate = false
 controls.enableDamping = true
 
 /**
